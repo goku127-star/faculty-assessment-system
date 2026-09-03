@@ -1,0 +1,126 @@
+// Faculty Course Assessment Record System - Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FACULTY
+}
+
+enum AssessmentType {
+  QUIZ
+  ASSIGNMENT
+  MIDTERM
+  FINAL
+  PROJECT
+  VIVA
+}
+
+enum Semester {
+  ODD
+  EVEN
+}
+
+model Faculty {
+  id           String   @id @default(uuid())
+  employeeCode String   @unique
+  name         String
+  email        String   @unique
+  password     String
+  department   String
+  designation  String?
+  role         Role     @default(FACULTY)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  courses Course[]
+
+  @@map("faculties")
+}
+
+model Course {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  title      String
+  department String
+  credits    Int      @default(3)
+  semester   Semester
+  academicYear String @map("academic_year")
+  facultyId  String
+  faculty    Faculty  @relation(fields: [facultyId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  enrollments Enrollment[]
+  assessments Assessment[]
+
+  @@map("courses")
+}
+
+model Student {
+  id          String   @id @default(uuid())
+  rollNumber  String   @unique
+  name        String
+  email       String   @unique
+  program     String?
+  batch       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments Enrollment[]
+  records     AssessmentRecord[]
+
+  @@map("students")
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, studentId])
+  @@map("enrollments")
+}
+
+model Assessment {
+  id         String         @id @default(uuid())
+  courseId   String
+  course     Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title      String
+  type       AssessmentType
+  maxMarks   Float          @map("max_marks")
+  weightage  Float          @default(100) // percentage weight toward final grade
+  scheduledOn DateTime?     @map("scheduled_on")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  records AssessmentRecord[]
+
+  @@map("assessments")
+}
+
+model AssessmentRecord {
+  id            String     @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marksObtained Float      @map("marks_obtained")
+  remarks       String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([assessmentId, studentId])
+  @@map("assessment_records")
+}
